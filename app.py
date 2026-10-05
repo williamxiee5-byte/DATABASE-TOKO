@@ -100,6 +100,21 @@ st.markdown(
         color: #431407 !important;
     }
 
+    .card-product-title {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: #9a3412;
+        letter-spacing: -0.5px;
+        margin-bottom: 4px;
+        line-height: 1.2;
+    }
+    .card-product-sub {
+        font-size: 0.95rem;
+        color: #c2410c;
+        font-weight: 600;
+        margin-bottom: 14px;
+    }
+
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
         border-bottom: 1px solid rgba(251, 146, 60, 0.3);
@@ -327,7 +342,6 @@ with tab1:
           " **Delete** di keyboard."
       )
 
-      # Default 1 baris awal agar fleksibel untuk produk single-order
       default_tiers = pd.DataFrame([
           {"min_order": 1, "harga_jual": 6500.0},
       ])
@@ -401,7 +415,6 @@ with tab1:
           key="t1_tm",
       )
 
-  # Filter ketat: hanya ambil baris yang valid dan harga jual > 0
   if not editor_tier.empty:
     clean_tiers = editor_tier.dropna().copy()
     clean_tiers = clean_tiers[clean_tiers["harga_jual"] > 0]
@@ -567,7 +580,6 @@ with tab1:
               if list_tiers:
                 supabase.table("product_tiers").insert(list_tiers).execute()
 
-              # Riwayat audit log awal
               supabase.table("riwayat_harga_produk").insert({
                   "produk_id": new_product_id,
                   "tanggal_perubahan": datetime.now().strftime(
@@ -664,36 +676,56 @@ with tab2:
               "Laba Bersih": f"Rp {t_laba:,.0f}",
               "Margin (%)": f"{t_margin:.2f}%",
               "BEP ROAS": f"{t_bep:.2f}x" if t_bep > 0 else "Rugi",
+              # Nilai numerik murni untuk parsing card
+              "_num_modal": p_modal,
+              "_num_hj": t_hj,
+              "_num_laba": t_laba,
+              "_num_margin": t_margin,
+              "_num_bep": t_bep,
           })
       else:
+        p_mo = int(prod.get("min_order", 1))
+        p_hj = float(prod.get("harga_jual_unit", 0.0))
+        p_laba = float(prod.get("laba_bersih_total", 0.0))
+        p_margin = float(prod.get("margin_bersih_persen", 0.0))
+        p_bep = float(prod.get("bep_roas", 0.0))
+
         rows_expanded.append({
             "ID": pid,
             "Nama Produk": p_nama,
-            "Min. Order": int(prod.get("min_order", 1)),
+            "Min. Order": p_mo,
             "Modal/Unit": f"Rp {p_modal:,.0f}",
-            "Harga Jual/Unit": f"Rp {float(prod.get('harga_jual_unit', 0.0)):,.0f}",
-            "Laba Bersih": (
-                f"Rp {float(prod.get('laba_bersih_total', 0.0)):,.0f}"
-            ),
-            "Margin (%)": (
-                f"{float(prod.get('margin_bersih_persen', 0.0)):.2f}%"
-            ),
-            "BEP ROAS": (
-                f"{float(prod.get('bep_roas', 0.0)):.2f}x"
-                if float(prod.get("bep_roas", 0.0)) > 0
-                else "Rugi"
-            ),
+            "Harga Jual/Unit": f"Rp {p_hj:,.0f}",
+            "Laba Bersih": f"Rp {p_laba:,.0f}",
+            "Margin (%)": f"{p_margin:.2f}%",
+            "BEP ROAS": f"{p_bep:.2f}x" if p_bep > 0 else "Rugi",
+            "_num_modal": p_modal,
+            "_num_hj": p_hj,
+            "_num_laba": p_laba,
+            "_num_margin": p_margin,
+            "_num_bep": p_bep,
         })
 
-    display_df = pd.DataFrame(rows_expanded)
+    display_all_df = pd.DataFrame(rows_expanded)
+    # Tampilkan kolom tabel tanpa kolom numerik helper
+    table_show_df = display_all_df[[
+        "ID",
+        "Nama Produk",
+        "Min. Order",
+        "Modal/Unit",
+        "Harga Jual/Unit",
+        "Laba Bersih",
+        "Margin (%)",
+        "BEP ROAS",
+    ]]
 
     with st.container(border=True):
       st.markdown(
-          "**📋 Daftar Produk & Seluruh Skema Grosir (Klik baris untuk membuka"
-          " Card):**"
+          "**📋 Daftar Produk & Seluruh Skema Grosir (Klik/centang baris untuk"
+          " melihat Card Performa):**"
       )
       event = st.dataframe(
-          display_df,
+          table_show_df,
           use_container_width=True,
           hide_index=True,
           on_select="rerun",
@@ -701,10 +733,13 @@ with tab2:
       )
 
     selected_id = None
+    selected_row_data = None
     selected_rows = event.selection.rows if hasattr(event, "selection") else []
+
     if len(selected_rows) > 0:
       selected_idx = selected_rows[0]
-      selected_id = int(display_df.iloc[selected_idx]["ID"])
+      selected_row_data = display_all_df.iloc[selected_idx]
+      selected_id = int(selected_row_data["ID"])
     else:
       options_dict = {
           f"ID {row['id']} - {row['nama_produk']}": int(row["id"])
@@ -716,37 +751,105 @@ with tab2:
           index=0,
       )
       selected_id = options_dict[pilihan]
+      matches = display_all_df[display_all_df["ID"] == selected_id]
+      if not matches.empty:
+        selected_row_data = matches.iloc[0]
 
     row_data = df_raw[df_raw["id"] == selected_id].iloc[0]
 
-    # Card Produk Detail
+    # ==========================================
+    # KARTU RINGKASAN PERFORMA PRODUK (CARD ALA TAB 1)
+    # ==========================================
+    if selected_row_data is not None:
+      current_img_url = (
+          str(row_data.get("image_url", ""))
+          if pd.notnull(row_data.get("image_url"))
+          else ""
+      )
+
+      with st.container(border=True):
+        col_c_img, col_c_info = st.columns([1, 2.7], gap="large")
+
+        with col_c_img:
+          if current_img_url and current_img_url.strip():
+            st.image(
+                current_img_url,
+                caption=selected_row_data["Nama Produk"],
+                use_container_width=True,
+            )
+          else:
+            st.markdown(
+                """
+                <div style="height: 190px; border-radius: 14px; border: 2px dashed rgba(251, 146, 60, 0.4); 
+                            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                            background-color: rgba(255, 247, 237, 0.6); color: #c2410c;">
+                    <div style="font-size: 2.8rem; margin-bottom: 4px;">🖼️</div>
+                    <div style="font-size: 0.85rem; font-weight: 600;">Belum Ada Foto</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with col_c_info:
+          st.markdown(
+              f'<div class="card-product-title">{selected_row_data["Nama Produk"]}</div>',
+              unsafe_allow_html=True,
+          )
+          st.markdown(
+              '<div class="card-product-sub">ID Produk: '
+              f'<b>{selected_id}</b> &nbsp;|&nbsp; Target Tier: <span'
+              ' style="background-color:#fed7aa; color:#9a3412; padding: 2px'
+              ' 8px; border-radius: 6px; font-weight:700;">Min'
+              f' {selected_row_data["Min. Order"]} Pcs</span></div>',
+              unsafe_allow_html=True,
+          )
+
+          # Baris 1: Min Order, Modal Unit, Harga Jual
+          k1, k2, k3 = st.columns(3)
+          k1.metric(
+              "📦 MIN. ORDER", f"{selected_row_data['Min. Order']} Pcs"
+          )
+          k2.metric("💰 MODAL / UNIT", selected_row_data["Modal/Unit"])
+          k3.metric("🏷️ HARGA JUAL", selected_row_data["Harga Jual/Unit"])
+
+          st.write("")
+          # Baris 2: Laba Bersih, Margin (%), BEP ROAS
+          k4, k5, k6 = st.columns(3)
+          k4.metric(
+              "📈 LABA BERSIH",
+              selected_row_data["Laba Bersih"],
+              delta=f"Paket {selected_row_data['Min. Order']} pcs",
+              delta_color="normal",
+          )
+          k5.metric(
+              "📊 MARGIN (%)",
+              selected_row_data["Margin (%)"],
+              delta=(
+                  f"{float(selected_row_data['_num_margin']) - float(row_data.get('target_margin', 20.0)):.2f}%"
+                  " vs Target"
+              ),
+          )
+          k6.metric("🎯 BEP ROAS", selected_row_data["BEP ROAS"])
+
+    # Card Edit Parameter Produk
     with st.container(border=True):
       st.markdown(
-          f"### 🎴 Card Produk: **{row_data['nama_produk']}** (ID:"
+          f"### ⚙️ Edit & Kelola Produk: **{row_data['nama_produk']}** (ID:"
           f" {selected_id})"
       )
 
       card_col_img, card_col_form = st.columns([1, 2], gap="large")
 
       with card_col_img:
-        st.markdown("##### 🖼️ Foto Produk (Cloud)")
+        st.markdown("##### 🖼️ Upload / Ganti Foto Produk")
         current_img_url = (
             str(row_data.get("image_url", ""))
             if pd.notnull(row_data.get("image_url"))
             else ""
         )
 
-        if current_img_url and current_img_url.strip():
-          st.image(
-              current_img_url,
-              caption=row_data["nama_produk"],
-              use_container_width=True,
-          )
-        else:
-          st.info("📷 Belum ada foto di Cloud.")
-
         uploaded_file = st.file_uploader(
-            "Unggah / Ganti Foto ke Cloud",
+            "Unggah File Foto",
             type=["png", "jpg", "jpeg"],
             key=f"uploader_{selected_id}",
         )
@@ -913,7 +1016,6 @@ with tab2:
                 "id", selected_id
             ).execute()
 
-            # Catat perubahan otomatis ke riwayat audit log
             if modal_berubah or harga_berubah:
               ket_list = []
               if modal_berubah:
@@ -1022,7 +1124,7 @@ with tab2:
 
     # Download CSV
     st.markdown("---")
-    csv_data = display_df.to_csv(index=False).encode("utf-8")
+    csv_data = table_show_df.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="📥 Download Data CSV (Semua Skema Tier)",
         data=csv_data,
