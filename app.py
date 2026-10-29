@@ -77,4 +77,96 @@ st.markdown(
         border: 1px solid rgba(251, 146, 60, 0.25) !important;
         background-color: rgba(255, 255, 255, 0.92) !important;
         backdrop-filter: blur(12px) !important;
-        box-shadow: 0 8px 24px -4px rgba(234, 88
+        box-shadow: 0 8px 24px -4px rgba(234, 88, 12, 0.06) !important;
+    }
+
+    [data-testid="stMetric"] {
+        background-color: rgba(255, 247, 237, 0.92) !important;
+        border: 1px solid rgba(253, 186, 116, 0.5) !important;
+        border-radius: 14px !important;
+        padding: 16px !important;
+        box-shadow: 0 2px 6px rgba(234, 88, 12, 0.04) !important;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.82rem !important;
+        color: #9a3412 !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+    [data-testid="stMetricValue"] {
+        font-size: 1.7rem !important;
+        font-weight: 800 !important;
+        color: #431407 !important;
+    }
+
+    .card-product-title {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: #9a3412;
+        letter-spacing: -0.5px;
+        margin-bottom: 4px;
+        line-height: 1.2;
+    }
+    .card-product-sub {
+        font-size: 0.95rem;
+        color: #c2410c;
+        font-weight: 600;
+        margin-bottom: 14px;
+    }
+
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+        border-bottom: 1px solid rgba(251, 146, 60, 0.3);
+        padding-bottom: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 44px;
+        border-radius: 10px;
+        padding: 8px 20px;
+        font-weight: 700;
+        background-color: rgba(255, 237, 213, 0.6);
+        color: #9a3412;
+        border: 1px solid rgba(253, 186, 116, 0.35);
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #ea580c, #c2410c) !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28) !important;
+    }
+
+    .stButton>button[kind="primary"] {
+        border-radius: 10px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #f97316, #ea580c) !important;
+        border: none !important;
+        padding: 0.6rem 1.2rem;
+        box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28) !important;
+        color: #ffffff !important;
+        transition: all 0.2s ease;
+    }
+    .stButton>button[kind="primary"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(234, 88, 12, 0.38) !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ==========================================
+# 3. SISTEM AUTHENTICATION & LOGIN
+# ==========================================
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+if "user_role" not in st.session_state:
+    st.session_state["user_role"] = None
+if "username" not in st.session_state:
+    st.session_state["username"] = None
+if "user_name" not in st.session_state:
+    st.session_state["user_name"] = None
+
+if not st.session_state["logged_in"]:
+    st.markdown(
+        '<div class="
