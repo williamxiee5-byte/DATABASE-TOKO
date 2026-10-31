@@ -10,11 +10,9 @@ SUPABASE_URL = "https://iarlfrjsyihvgrptvrdy.supabase.co"
 SUPABASE_KEY = "sb_publishable_T8ItYv0nRWIo2PZRXfBFBA_nPtCudAQ"
 BUCKET_NAME = "produk-foto"
 
-
 @st.cache_resource
 def get_supabase_client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
-
 
 try:
     supabase = get_supabase_client()
@@ -212,4 +210,31 @@ if not st.session_state["logged_in"]:
                                 if user_data["password"] != log_pass:
                                     st.error("❌ Password salah!")
                                 elif user_data.get("status_akses") != "approved":
-                                    st.warning(
+                                    st.warning("⚠️ Akun Anda belum disetujui oleh Master Admin!")
+                                else:
+                                    # Berhasil Login
+                                    st.session_state["logged_in"] = True
+                                    st.session_state["user_role"] = user_data.get("role")
+                                    st.session_state["username"] = user_data["username"]
+                                    st.session_state["user_name"] = user_data.get("nama_lengkap", user_data["username"])
+                                    st.rerun() # Refresh halaman agar masuk ke dashboard utama
+                        except Exception as e:
+                            st.error(f"❌ Terjadi kesalahan saat memverifikasi data: {e}")
+            
+            with tab_reg:
+                st.info("Form permintaan akses dapat diisi di sini (TBA).")
+
+# ==========================================
+# 4. DASHBOARD UTAMA (JIKA SUDAH LOGIN)
+# ==========================================
+else:
+    col_kiri, col_kanan = st.columns([4, 1])
+    with col_kiri:
+        st.markdown(f"### 👋 Selamat Datang, {st.session_state['user_name']}!")
+    with col_kanan:
+        if st.button("Keluar (Logout)", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+            
+    st.write("---")
+    st.success("Anda berhasil login. Silakan masukkan konten dashboard
