@@ -60,4 +60,181 @@ st.markdown(
         font-size: 2.1rem;
         color: #9a3412;
         margin-bottom: 0.2rem;
-        letter-spacing: -0.
+        letter-spacing: -0.5px;
+    }
+    .main-subtitle {
+        color: #c2410c;
+        opacity: 0.85;
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
+    }
+
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 16px !important;
+        border: 1px solid rgba(251, 146, 60, 0.25) !important;
+        background-color: rgba(255, 255, 255, 0.92) !important;
+        backdrop-filter: blur(12px) !important;
+        box-shadow: 0 8px 24px -4px rgba(234, 88, 12, 0.06) !important;
+    }
+
+    [data-testid="stMetric"] {
+        background-color: rgba(255, 247, 237, 0.92) !important;
+        border: 1px solid rgba(253, 186, 116, 0.5) !important;
+        border-radius: 14px !important;
+        padding: 16px !important;
+        box-shadow: 0 2px 6px rgba(234, 88, 12, 0.04) !important;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.82rem !important;
+        color: #9a3412 !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+    [data-testid="stMetricValue"] {
+        font-size: 1.7rem !important;
+        font-weight: 800 !important;
+        color: #431407 !important;
+    }
+
+    .card-product-title {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: #9a3412;
+        letter-spacing: -0.5px;
+        margin-bottom: 4px;
+        line-height: 1.2;
+    }
+    .card-product-sub {
+        font-size: 0.95rem;
+        color: #c2410c;
+        font-weight: 600;
+        margin-bottom: 14px;
+    }
+
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+        border-bottom: 1px solid rgba(251, 146, 60, 0.3);
+        padding-bottom: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 44px;
+        border-radius: 10px;
+        padding: 8px 20px;
+        font-weight: 700;
+        background-color: rgba(255, 237, 213, 0.6);
+        color: #9a3412;
+        border: 1px solid rgba(253, 186, 116, 0.35);
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #ea580c, #c2410c) !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28) !important;
+    }
+
+    .stButton>button[kind="primary"] {
+        border-radius: 10px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #f97316, #ea580c) !important;
+        border: none !important;
+        padding: 0.6rem 1.2rem;
+        box-shadow: 0 4px 14px rgba(234, 88, 12, 0.28) !important;
+        color: #ffffff !important;
+        transition: all 0.2s ease;
+    }
+    .stButton>button[kind="primary"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(234, 88, 12, 0.38) !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ==========================================
+# 3. SISTEM AUTHENTICATION & LOGIN
+# ==========================================
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+if "user_role" not in st.session_state:
+    st.session_state["user_role"] = None
+if "username" not in st.session_state:
+    st.session_state["username"] = None
+if "user_name" not in st.session_state:
+    st.session_state["user_name"] = None
+
+if not st.session_state["logged_in"]:
+    st.markdown(
+        """<div class="main-title" style="text-align: center; margin-top: 40px;">🛒 Toko Management Dashboard</div>""",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        """<div class="main-subtitle" style="text-align: center;">Sistem Terproteksi. Silakan login atau ajukan akses ke Master Admin.</div>""",
+        unsafe_allow_html=True,
+    )
+
+    col_l, col_form, col_r = st.columns([1, 1.2, 1])
+
+    with col_form:
+        with st.container(border=True):
+            tab_login, tab_reg = st.tabs(
+                ["🔐 Masuk (Login)", "📝 Minta Akses (Daftar)"]
+            )
+
+            with tab_login:
+                st.markdown("##### Masuk ke Dashboard")
+                log_user = st.text_input("Username / Akses ID", key="login_user")
+                log_pass = st.text_input("Password", type="password", key="login_pass")
+
+                if st.button(
+                    "Masuk ke Sistem",
+                    type="primary",
+                    use_container_width=True,
+                ):
+                    if not log_user.strip() or not log_pass.strip():
+                        st.warning("⚠️ Masukkan Username dan Password!")
+                    else:
+                        try:
+                            res_u = (
+                                supabase.table("users_akses")
+                                .select("*")
+                                .eq("username", log_user.strip())
+                                .execute()
+                            )
+                            if not res_u.data:
+                                st.error("❌ Username tidak terdaftar!")
+                            else:
+                                user_data = res_u.data[0]
+                                if user_data["password"] != log_pass:
+                                    st.error("❌ Password salah!")
+                                elif user_data.get("status_akses") != "approved":
+                                    st.warning("⚠️ Akun Anda belum disetujui oleh Master Admin!")
+                                else:
+                                    # Berhasil Login
+                                    st.session_state["logged_in"] = True
+                                    st.session_state["user_role"] = user_data.get("role")
+                                    st.session_state["username"] = user_data["username"]
+                                    st.session_state["user_name"] = user_data.get("nama_lengkap", user_data["username"])
+                                    st.rerun() # Refresh halaman agar masuk ke dashboard utama
+                        except Exception as e:
+                            st.error(f"❌ Terjadi kesalahan saat memverifikasi data: {e}")
+            
+            with tab_reg:
+                st.info("Form permintaan akses dapat diisi di sini (TBA).")
+
+# ==========================================
+# 4. DASHBOARD UTAMA (JIKA SUDAH LOGIN)
+# ==========================================
+else:
+    col_kiri, col_kanan = st.columns([4, 1])
+    with col_kiri:
+        st.markdown(f"### 👋 Selamat Datang, {st.session_state['user_name']}!")
+    with col_kanan:
+        if st.button("Keluar (Logout)", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+            
+    st.write("---")
+    st.success("Anda berhasil login. Silakan masukkan konten dashboard perhitungan HPP, margin, dan manajemen stok di area ini.")
